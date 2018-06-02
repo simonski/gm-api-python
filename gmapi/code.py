@@ -4,11 +4,12 @@ import json
 
 from gmapi import GraymetaClient
 
-VERSION="1.1.21"
+VERSION="1.2.21"
 COMMAND="gm"
 
 def usageAndDie():
     print "gm is a tool for querying a graymeta.com installation over https"
+    print "https://github.com/simonski/gm-api-python"
     print ""
     print "Usage: "
     print ""
@@ -21,7 +22,7 @@ def usageAndDie():
     if server_url:
         print "    GRAYMETA_SERVER_URL".ljust(ljust_value) + ": " + server_url
     else:
-        print "    GRAYMETA_SERVER_URL".ljust(ljust_value) + ": unset - please `export GRAYMETA_SERVER_URL=http://your-graymeta-server`"
+        print "    GRAYMETA_SERVER_URL".ljust(ljust_value) + ": unset - please `export GRAYMETA_SERVER_URL=https://your-graymeta-server`"
 
     if server_key:
         print "    GRAYMETA_API_KEY".ljust(ljust_value) + ": xxxxxxxx"
@@ -47,7 +48,7 @@ def usageAndDie():
     print "    upload_stl {gm_item_id} {stl_filename} ".ljust(ljust_value) + "- uploads and associates an STL file with content"
     print ""
 
-    print "    harvest_item_from_s3_key".ljust(ljust_value) + "-forces a harvest for an item via its S3 key"
+    print "    harvest_item_from_s3_key".ljust(ljust_value) + "- forces a harvest for an item via its S3 key"
     print "    harvest_item {location_id} {gm_item_id}".ljust(ljust_value) + "- forces a harvest for a specific item"
     print "    harvest_container {location_id} {container_id}".ljust(ljust_value) + "- forces a harvest for an entire container."
     print ""
