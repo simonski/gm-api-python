@@ -4,7 +4,7 @@ import json
 
 from gmapi import GraymetaClient
 
-VERSION="1.0.21"
+VERSION="1.1.21"
 COMMAND="gm"
 
 def usageAndDie():
@@ -58,7 +58,7 @@ def usageAndDie():
 
 def version():
     print COMMAND + " client " + VERSION + ", Compatible with Server Installation 0.21"
-    
+
 def main():
 
     if len(sys.argv) == 1:
@@ -96,7 +96,7 @@ def main():
         gm_item_id = sys.argv[2]
         stl_filename = sys.argv[3]
         nicePrint(gm.upload_stl(gm_item_id, stl_filename))
-    
+
     elif command == "features":
         nicePrint(gm.features())
 
