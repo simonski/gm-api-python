@@ -4,7 +4,7 @@ import json
 
 from gmapi import GraymetaClient
 
-VERSION="1.3.21"
+VERSION="1.4.21"
 COMMAND="gm"
 
 def usageAndDie():
@@ -41,10 +41,14 @@ def usageAndDie():
 
     print("    list_items {container_id}".ljust(ljust_value) + "- displays items in a container")
     print("")
-    print("    get_item_id {location_id} {container_id} {item_id}".ljust(ljust_value) + "- gets metadata for an item")
-    print("    get_item_from_s3_key {s3_key}".ljust(ljust_value) + "- gets item from the s3 path")
-    print("    get_item {item_id}".ljust(ljust_value) + "- gets metadata for an item")
+    print("    get_gm_item_id {location_id} {container_id} {item_id}".ljust(ljust_value) + "- gets the gm_item_id for ")
+    print("    get_gm_item {gm_item_id}".ljust(ljust_value) + "- gets metadata for an item using the gm_item_id")
+    print ("")
+    print("    get_gm_item_id_from_s3_key {s3_key}".ljust(ljust_value) + "- gets gm_item_id from an s3_key")
+    print("    get_gm_item_from_s3_key {s3_key}".ljust(ljust_value) + "- gets metadata for an item using the s3_key")
     print("")
+    print("    delete_gm_item {gm_item_id}".ljust(ljust_value) + "- deletes the metadata from graymeta")
+    print ("")
     print("    upload_stl {gm_item_id} {stl_filename} ".ljust(ljust_value) + "- uploads and associates an STL file with content")
     print("")
 
@@ -52,7 +56,10 @@ def usageAndDie():
     print("    harvest_item {location_id} {gm_item_id}".ljust(ljust_value) + "- forces a harvest for a specific item")
     print("    harvest_container {location_id} {container_id}".ljust(ljust_value) + "- forces a harvest for an entire container.")
     print("")
+    print("    health".ljust(ljust_value) + "- print current /api/data/healthz data.")
+    print("    activity".ljust(ljust_value) + "- print current /api/data/activity data.")
     print("    version".ljust(ljust_value) + "- print current version number.")
+    print("    get {URL}".ljust(ljust_value) + "- returns response from a GET.")
     print("")
 
     sys.exit(0)
@@ -83,17 +90,7 @@ def main():
 
     gm = GraymetaClient(server_url, server_key)
 
-    if command == "get_item":
-        gm_item_id = sys.argv[2]
-        nicePrint(gm.get_item(gm_item_id))
-
-    elif command == "get_item_id":
-        location_id = sys.argv[2]
-        container_id = sys.argv[3]
-        item_id = sys.argv[4]
-        nicePrint(gm.get_gm_item_id(location_id, container_id, item_id))
-
-    elif command == "upload_stl":
+    if command == "upload_stl":
         gm_item_id = sys.argv[2]
         stl_filename = sys.argv[3]
         nicePrint(gm.upload_stl(gm_item_id, stl_filename))
@@ -107,10 +104,6 @@ def main():
     elif command == "list_location":
         location_id = sys.argv[2]
         nicePrint(gm.list_location(location_id))
-
-    elif command == "list_items":
-        location_id = sys.argv[2]
-        nicePrint(gm.list_items(location_id))
 
     elif command == "list_all_containers":
         location_id = sys.argv[2]
@@ -129,13 +122,65 @@ def main():
         gm_item_id = sys.argv[3]
         nicePrint(gm.harvest_item(location_id, gm_item_id))
 
-    elif command == "get_item_from_s3_key":
+    elif command == "harvest_item_from_s3_key":
         s3_key = sys.argv[2]
-        nicePrint(gm.get_item_from_s3_key(s3_key))
+        gm_item_id, location_id = gm.get_gm_item_id_from_s3_key(s3_key)
+        nicePrint(gm.harvest_item(location_id, gm_item_id))
 
+    elif command == "get_gm_item_id_from_s3_key":
+        s3_key = sys.argv[2]
+        gm_item_id = gm.get_gm_item_id_from_s3_key(s3_key)
+        print gm_item_id
+
+    elif command == "get_gm_item_id":
+        location_id = sys.argv[2]
+        container_id = sys.argv[3]
+        item_id = sys.argv[4]
+        nicePrint(gm.get_gm_item_id(location_id, container_id, item_id))
+
+    elif command == "get_gm_item_from_s3_key":
+        s3_key = sys.argv[2]
+        nicePrint(gm.get_gm_item_from_s3_key(s3_key))
+
+    elif command == "get_gm_item":
+        gm_item_id = sys.argv[2]
+        nicePrint(gm.get_gm_item(gm_item_id))
+
+    elif command == "delete_gm_item":
+        gm_item_id = sys.argv[2]
+        nicePrint(gm.delete_gm_item(gm_item_id))
+
+    elif command == "health":
+        nicePrint(gm.health())
+
+    elif command == "activity":
+        nicePrint(gm.activity())
+
+    elif command == "user":
+        nicePrint(gm.user())
+
+    elif command == "platform":
+        nicePrint(gm.platform())
+
+    elif command == "compilations":
+        nicePrint(gm.compilations())
+
+    elif command == "search":
+        nicePrint(gm.search())
+
+    elif command == "list_items":
+        nicePrint(gm.search())
+
+    elif command == "get":
+        partial_url = sys.argv[2]
+        nicePrint(gm.get(partial_url))
 
     else:
-        usageAndDie()
+        print("I don't know how to '" + command + "'")
+        sys.exit(1)
 
 def nicePrint(data):
-    print(json.dumps(data, indent=4))
+    if data:
+        print(json.dumps(data, indent=4))
+    else:
+        print "No data found."
