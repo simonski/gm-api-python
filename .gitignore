@@ -1,6 +1,7 @@
 # Byte-compiled / optimized / DLL files
 *.swp
 gmapi.egg_info
+examples/*
 
 __pycache__/
 *.py[cod]

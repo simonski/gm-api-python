@@ -10,11 +10,7 @@ class GraymetaClient():
         self.HEADERS = { "Authorization": "Bearer " + self.API_KEY }
 
     def features(self):
-        url = self.SERVER_URL + "/api/data/features"
-        headers = self.HEADERS
-        data = {}
-        r = requests.get(url, headers=headers)
-        return r.json()
+        return self.get("/api/data/features")
 
     def harvest_item(self, location_id, gm_item_id):
         """
@@ -25,12 +21,9 @@ class GraymetaClient():
         	"force": {force}
         }
         """
-        url = self.SERVER_URL + "/api/control/harvest"
-        headers = self.HEADERS
+        url = "/api/control/harvest"
         data = { "location_id": location_id, "item_id": gm_item_id, "force": "true"}
-        data_str = json.dumps(data)
-        r = requests.post(url, data=data_str, headers=headers)
-        return r.json()
+        return self.post(url, data)
 
     def harvest_container(self, location_id, container_id):
         """
@@ -41,12 +34,9 @@ class GraymetaClient():
         	"force": {force}
         }
         """
-        url = self.SERVER_URL + "/api/control/harvest"
-        headers = self.HEADERS
+        url = "/api/control/harvest"
         data = { "location_id": location_id, "container_id": container_id, "force": True }
-        data_str = json.dumps(data)
-        r = requests.post(url, data=data_str, headers=headers)
-        return r.json()
+        return self.post(url, data)
 
     def get_gm_item_from_s3_key(self, s3_key):
         gm_item_id, location_id = self.get_gm_item_id_from_s3_key(s3_key)
@@ -83,16 +73,16 @@ class GraymetaClient():
                 gm_item_id = item_data["gm_item_id"]
                 return gm_item_id, location_id
             else:
-                print "No gm_item_id found."
+                print("No gm_item_id found.")
                 return None, None
-               
+
 
     def get_gm_item_id(self, location_id, container_id, item_id):
         url = self.SERVER_URL + "/api/control/item-id"
         data = { "location_id": location_id, "container_id": container_id, "item_id": item_id }
         data_str = json.dumps(data)
         headers = self.HEADERS
-        
+
         r = requests.post(url, data=data_str, headers=headers)
         if r.status_code >= 200 and r.status_code <= 299:
             return r.json()
@@ -100,16 +90,10 @@ class GraymetaClient():
             return None
 
     def get_gm_item(self, gm_item_id):
-        url = self.SERVER_URL + "/api/data/items/" + gm_item_id
-        headers = self.HEADERS
-        r = requests.get(url, headers=headers)
-        return r.json()
+        return self.get("/api/data/items/" + gm_item_id)
 
     def list_items(self, container_id):
-        url = self.SERVER_URL + "/api/data/items"
-        headers = self.HEADERS
-        r = requests.get(url, headers=headers)
-        return r.json()
+        return self.get("/api/data/items")
 
     def delete_gm_item(self, gm_item_id):
         url = self.SERVER_URL + "/api/data/items/" + gm_item_id
@@ -125,73 +109,76 @@ class GraymetaClient():
         return r.json()
 
     def list_location(self, location_id):
-        url = self.SERVER_URL + "/api/data/locations/" + location_id
-        headers = self.HEADERS
-        r = requests.get(url, headers=headers)
-        return r.json()
+        return self.get("/api/data/locations/" + location_id)
 
     def list_locations(self):
-        url = self.SERVER_URL + "/api/data/locations"
-        headers = self.HEADERS
-        r = requests.get(url, headers=headers)
-        return r.json()
+        return self.get("/api/data/locations")
 
     def list_containers(self, location_id):
-        url = self.SERVER_URL + "/api/data/locations/" + location_id + "/containers"
-        headers = self.HEADERS
-        r = requests.get(url, headers=headers)
-        return r.json()
+        return self.get("/api/data/locations/" + location_id + "/containers")
 
     def list_enabled_containers(self):
         """
         GET /api/data/containers/enabled
         """
-        url = self.SERVER_URL + "/api/data/containers/enabled"
-        headers = self.HEADERS
-        r = requests.get(url, headers=headers)
-        return r.json()
+        return self.get("/api/data/containers/enabled")
 
     def health(self):
-        url = self.SERVER_URL + "/api/data/healthz"
-        headers = self.HEADERS
-        r = requests.get(url, headers=headers)
-        return r.json()
+        return self.get("/api/data/healthz")
 
     def activity(self):
-        url = self.SERVER_URL + "/api/data/activity"
-        headers = self.HEADERS
-        r = requests.get(url, headers=headers)
-        return r.json()
+        return self.get("/api/data/activity")
 
     def user(self):
-        url = self.SERVER_URL + "/api/data/user"
-        headers = self.HEADERS
-        r = requests.get(url, headers=headers)
-        return r.json()
+        return self.get("/api/data/user")
 
     def platform(self):
-        url = self.SERVER_URL + "/api/data/summary/platform"
-        headers = self.HEADERS
-        r = requests.get(url, headers=headers)
-        return r.json()
+        return self.get("/api/data/summary/platform")
 
     def search(self):
-        url = self.SERVER_URL + "/api/data/search"
-        headers = self.HEADERS
-        data = {'limit':9999}
-        data_str = json.dumps(data)
-        r = requests.post(url, data=data_str, headers=headers)
-        return r.json()
+        data = {}
+        return self.post("/api/data/search", data)
 
     def compilations(self):
-        url = self.SERVER_URL + "/api/data/summary/compilations"
+        return self.get("/api/data/summary/compilations")
+
+    def keyword_list_groups(self):
+        return self.get("/api/data/keywords")
+
+    def keyword_get_group(self, group_id):
+        return self.get("/api/data/keyword-groups/" + group_id)
+
+    def keyword_create_group(self, name, color):
+        data = {"name": name, "color": color }
+        return self.post("/api/data/keyword-groups", data)
+
+    def keyword_delete_group(self, group_id):
+        url = self.SERVER_URL + "/api/data/keyword-groups/" + group_id
         headers = self.HEADERS
-        r = requests.get(url, headers=headers)
+        r = requests.delete(url, headers=headers)
+        return r.json()
+
+    def keyword_add_to_group(self, group_id, word):
+        url = "/api/data/keywords/" + group_id
+        data = {"word": word}
+        return self.post(url, data)
+
+    def keyword_remove_from_group(self, group_id, word):
+        url = self.SERVER_URL + "/api/data/keywords/" + group_id + "?word=" +word
+        headers = self.HEADERS
+        r = requests.delete(url, headers=headers)
         return r.json()
 
     def get(self, partial_url):
         url = self.SERVER_URL + partial_url
         headers = self.HEADERS
         r = requests.get(url, headers=headers)
+        return r.json()
+
+    def post(self, partial_url, data):
+        url = self.SERVER_URL + partial_url
+        headers = self.HEADERS
+        data_str = json.dumps(data)
+        r = requests.post(url, data=data_str, headers=headers)
         return r.json()
 
