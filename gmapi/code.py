@@ -2,10 +2,11 @@ import sys
 import os
 import json
 
-from gmapi import GraymetaClient
-from cli import CLI
+# py2/3 imports fix
+from .gmapi import GraymetaClient
+from .cli import CLI
 
-VERSION="1.8.21"
+VERSION="1.9.21"
 COMMAND="gm"
 
 def usageAndDie():
@@ -69,7 +70,7 @@ def usageAndDie():
     sys.exit(0)
 
 def version():
-    print(COMMAND + " client " + VERSION + ", Compatible with Server Installation 0.21")
+    print(COMMAND + " client " + VERSION)
 
 def main():
 

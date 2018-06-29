@@ -21,8 +21,8 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 setup(
     name='gmapi',
     test_suite='tests',
-    version='1.8.21',
-    description='Python bindings to Graymeta.com API v.21',
+    version='1.9.21',
+    description='Python bindings to Graymeta.com Platform API v.21+',
     long_description=long_description,
     url='https://github.com/simonski/gm-api-python',
     author='Simon Gauld',
