@@ -2,7 +2,7 @@
 
 Python GrayMeta API bindings.
 
-This project is used to access your GrayMeta installation API using python.
+This project is used to access your GrayMeta installation API using python.  For  `go`, please use [this](https://github.com/simonski/gm-api-go).
 
 ## Installation
 
@@ -12,7 +12,7 @@ This is avaialble on pypy
 
 ## Usage
 
-`gmapi` can be used directly via the terminal with the `gm` command, or via the API.
+Can be used directly via the terminal with the `gm` command, or via the API in your own python.
 
 ## Usage (Terminal)
 
@@ -31,6 +31,8 @@ Next, you can just call `gm`:
 gm	
 ```
 
+This will print out the commands you can perform on your server.
+
 ## Usage (API)
 
 Having installed gmapi via `pip`, you can then use it directly in your python, for example
@@ -48,7 +50,9 @@ client.search()
 
 ## API Documentation
 
-TODO
+Please refer to your Graymeta Platform Documentation for the API Docs.  I have tried to make the calls in `gmapi.py` as closely named as possible to the documentation.  Typing `gm` in the terminal will list all API calls that are currently implemented.
+
+> **Note** Currently only a subset of calls are implemented around initiating harvest, searching the index, querying containers/locations and fetching item metadata.
 	
 
 
