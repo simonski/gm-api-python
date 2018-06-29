@@ -92,6 +92,9 @@ class GraymetaClient():
     def get_gm_item(self, gm_item_id):
         return self.get("/api/data/items/" + gm_item_id)
 
+    def get_gm_item_v2(self, gm_item_id):
+        return self.get("/files/" + gm_item_id + "/metadata2.json")
+
     def list_items(self, container_id):
         return self.get("/api/data/items")
 

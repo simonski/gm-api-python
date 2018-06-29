@@ -6,7 +6,7 @@ import json
 from .gmapi import GraymetaClient
 from .cli import CLI
 
-VERSION="1.9.21"
+VERSION="1.10.21"
 COMMAND="gm"
 
 def usageAndDie():
@@ -177,6 +177,10 @@ def main():
     elif command == "get_gm_item":
         gm_item_id = sys.argv[2]
         nicePrint(gm.get_gm_item(gm_item_id))
+
+    elif command == "get_gm_item_v2":
+        gm_item_id = sys.argv[2]
+        nicePrint(gm.get_gm_item_v2(gm_item_id))
 
     elif command == "delete_gm_item":
         gm_item_id = sys.argv[2]
