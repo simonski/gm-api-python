@@ -25,6 +25,9 @@ class CLI():
         else:
             return defaultValue
 
+    def containsKey(self, key):
+        return self.indexOf(key) > -1
+
     def indexOf(self, key):
         if key in self.args:
             return self.args.index(key)

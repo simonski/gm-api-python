@@ -12,6 +12,15 @@ class GraymetaClient():
     def features(self):
         return self.get("/api/data/features")
 
+    def add_comment(self, gm_item_id, comment):
+        url = "/api/data/comments"
+        data = { "target_type": "item", "target_id": gm_item_id, "body": comment }
+        return self.post(url, data)
+
+    def list_comments(self, gm_item_id):
+        url = "/api/data/comments?target_type=item&page=0&target_id=" + gm_item_id
+        return self.get(url)
+
     def harvest_item(self, location_id, gm_item_id):
         """
         POST /api/control/harvest
@@ -22,7 +31,7 @@ class GraymetaClient():
         }
         """
         url = "/api/control/harvest"
-        data = { "location_id": location_id, "item_id": gm_item_id, "force": "true"}
+        data = { "location_id": location_id, "item_id": gm_item_id, "force": True}
         return self.post(url, data)
 
     def harvest_container(self, location_id, container_id):
@@ -129,6 +138,9 @@ class GraymetaClient():
     def health(self):
         return self.get("/api/data/healthz")
 
+    def stats(self):
+        return self.get("/api/control/system/stats")
+
     def activity(self):
         return self.get("/api/data/activity")
 
@@ -139,7 +151,15 @@ class GraymetaClient():
         return self.get("/api/data/summary/platform")
 
     def search(self):
-        data = {}
+        data = { "limit": 1000 }
+        return self.post("/api/data/search", data)
+
+    def search_last_modified(self, date_from, date_to):
+        data = { "limit": 1000, "last_modified": { "from": date_from, "to": date_to } }
+        return self.post("/api/data/search", data)
+
+    def search_last_harvested(self, date_from, date_to):
+        data = { "limit": 1000, "last_harvested": { "from": date_from, "to": date_to } }
         return self.post("/api/data/search", data)
 
     def compilations(self):
@@ -175,7 +195,10 @@ class GraymetaClient():
     def get(self, partial_url):
         url = self.SERVER_URL + partial_url
         headers = self.HEADERS
+        print str(headers)
         r = requests.get(url, headers=headers)
+        print r
+        print r.text
         return r.json()
 
     def post(self, partial_url, data):
@@ -183,5 +206,6 @@ class GraymetaClient():
         headers = self.HEADERS
         data_str = json.dumps(data)
         r = requests.post(url, data=data_str, headers=headers)
+        print(r)
         return r.json()
 

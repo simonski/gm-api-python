@@ -5,8 +5,8 @@ import json
 # py2/3 imports fix
 from .gmapi import GraymetaClient
 from .cli import CLI
+import constants
 
-VERSION="1.10.21"
 COMMAND="gm"
 
 def usageAndDie():
@@ -37,14 +37,16 @@ def usageAndDie():
     print("    list_locations".ljust(ljust_value) + "- displays all locations")
     print("    list_location {location_id}".ljust(ljust_value) + "- gets information on a specific location")
     print("")
-
     print("    list_containers {location_id}".ljust(ljust_value) + "- displays enabled containers")
     print("    list_all_containers {location_id}".ljust(ljust_value) + "- displays all containers")
-
-    print("    list_items".ljust(ljust_value) + "- displays all items")
+    print("")
+    print("    search -json".ljust(ljust_value) + "- displays all items (-json prints json)")
+    print("           -last_modified_from|-last_modified_to")
+    print("           -last_harvested_from|-last_harvested_to")
     print("")
     print("    get_gm_item_id {location_id} {container_id} {item_id}".ljust(ljust_value) + "- gets the gm_item_id for ")
     print("    get_gm_item {gm_item_id}".ljust(ljust_value) + "- gets metadata for an item using the gm_item_id")
+    print("    get_gm_item_v2 {gm_item_id}".ljust(ljust_value) + "- gets metadata v2 for an item using the gm_item_id")
     print("")
     print("    get_gm_item_id_from_s3_key {s3_key}".ljust(ljust_value) + "- gets gm_item_id from an s3_key")
     print("    get_gm_item_from_s3_key {s3_key}".ljust(ljust_value) + "- gets metadata for an item using the s3_key")
@@ -53,14 +55,15 @@ def usageAndDie():
     print("")
     print("    upload_stl {gm_item_id} {stl_filename} ".ljust(ljust_value) + "- uploads and associates an STL file with content")
     print("")
-
     print("    harvest_item_from_s3_key".ljust(ljust_value) + "- forces a harvest for an item via its S3 key")
     print("    harvest_item {location_id} {gm_item_id}".ljust(ljust_value) + "- forces a harvest for a specific item")
     print("    harvest_container {location_id} {container_id}".ljust(ljust_value) + "- forces a harvest for an entire container.")
-
+    print("")
+    print("    comment".ljust(ljust_value) + "- uses the Graymeta Comments API")
     print("")
     print("    keyword".ljust(ljust_value) + "- uses the Graymeta Keywords API")
     print("")
+    print("    stats".ljust(ljust_value) + "- print current /api/control/system/stats data.")
     print("    health".ljust(ljust_value) + "- print current /api/data/healthz data.")
     print("    activity".ljust(ljust_value) + "- print current /api/data/activity data.")
     print("    version".ljust(ljust_value) + "- print current gmapi version number.")
@@ -70,7 +73,7 @@ def usageAndDie():
     sys.exit(0)
 
 def version():
-    print(COMMAND + " client " + VERSION)
+    print(COMMAND + " client " + constants.VERSION)
 
 def main():
 
@@ -82,6 +85,7 @@ def main():
         version()
         sys.exit(1)
 
+    cli = CLI(sys.argv)
     server_url = os.environ.get("GRAYMETA_SERVER_URL") or None
     server_key = os.environ.get("GRAYMETA_API_KEY") or None
 
@@ -102,6 +106,21 @@ def main():
 
     elif command == "features":
         nicePrint(gm.features())
+
+    elif command == "comment":
+        cli = CLI(sys.argv)
+        command = cli.getOrDie("comment")
+        gm_item_id = cli.getOrDie("-gm_item_id")
+
+        if command == "add":
+            comment = cli.getOrDie("-m")
+            gm.add_comment(gm_item_id, comment)
+            nicePrint(gm.add_comment(gm_item_id, comment))
+                    
+        elif command == "list" or comment == "get":
+            nicePrint(gm.list_comments(gm_item_id))
+        else:
+            print "invalid comment command."
 
     elif command == "keyword":
         cli = CLI(sys.argv)
@@ -189,6 +208,9 @@ def main():
     elif command == "health":
         nicePrint(gm.health())
 
+    elif command == "stats":
+        nicePrint(gm.stats())
+
     elif command == "activity":
         nicePrint(gm.activity())
 
@@ -202,26 +224,43 @@ def main():
         nicePrint(gm.compilations())
 
     elif command == "search":
-        nicePrint(gm.search())
+        
+        results = None
+        if cli.containsKey("-last_modified_from") or cli.containsKey("-last_modified_to"):
+            last_modified_from = cli.getOrDie("-last_modified_from")
+            last_modified_to = cli.getOrDie("-last_modified_to")
+            results = gm.search_last_modified(last_modified_from, last_modified_to)
+        elif cli.containsKey("-last_harvested_from") or cli.containsKey("-last_harvested_to"):
+            last_harvested_from = cli.getOrDie("-last_harvested_from")
+            last_harvested_to = cli.getOrDie("-last_harvested_to")
+            results = gm.search_last_harvested(last_harvested_from, last_harvested_to)
+        else:
+            results = nicePrint(gm.search())
 
-    elif command == "list_items":
-        nicePrint(gm.search())
 
-    elif command == "list_item_ids":
-        results = gm.search()
-        print("ItemID".ljust(35)+"Last Harvested".ljust(27) + "Name".ljust(20))
-        for entry in results["results"]:
-            result = entry["result"]
-            gm_item_id = result["_id"]
-            container = result.get("stow_container_id") or "stow_container_id"
-            name = result.get("name") or "name"
-            last_modified = result.get("last_modified") or "no last modified."
-            last_harvested = result.get("last_harvested") or "no last harvested."
+        if cli.containsKey("-json"):
+            nicePrint(gm.search())
+        else:
+            print("ItemID".ljust(35)+"Last Harvested".ljust(27) + "Name".ljust(20))
+            for entry in results["results"]:
+                result = entry["result"]
+                gm_item_id = result["_id"]
+                container = result.get("stow_container_id") or "stow_container_id"
+                name = result.get("name") or None
+                last_modified = result.get("last_modified") or "no last modified."
+                last_harvested = result.get("last_harvested") or "no last harvested."
 
-            print(gm_item_id.ljust(35) + last_harvested.ljust(27) + (container+"/"+name).ljust(20))
+                if name is not None:
+                    full_name = container + "/" + name
+                else:
+                    full_name = "<not harvested>"
 
+                print(gm_item_id.ljust(35) + last_harvested.ljust(27) + full_name.ljust(20))
 
     elif command == "get":
+        """
+        performs an authenticated GET to the API
+        """
         partial_url = sys.argv[2]
         nicePrint(gm.get(partial_url))
 
