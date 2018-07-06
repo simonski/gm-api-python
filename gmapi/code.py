@@ -63,10 +63,12 @@ def usageAndDie():
     print("")
     print("    keyword".ljust(ljust_value) + "- uses the Graymeta Keywords API")
     print("")
+    print("    extract".ljust(ljust_value) + "- extracts all metadata")
     print("    stats".ljust(ljust_value) + "- print current /api/control/system/stats data.")
     print("    health".ljust(ljust_value) + "- print current /api/data/healthz data.")
     print("    activity".ljust(ljust_value) + "- print current /api/data/activity data.")
     print("    version".ljust(ljust_value) + "- print current gmapi version number.")
+    print("    summary".ljust(ljust_value) + "- print summary information about the platform.")
     print("    get {URL}".ljust(ljust_value) + "- returns response from a GET.")
     print("")
 
@@ -104,23 +106,37 @@ def main():
         stl_filename = sys.argv[3]
         nicePrint(gm.upload_stl(gm_item_id, stl_filename))
 
+    elif command == "extract_all":
+        gm.extract_all(cli)
+
+    elif command == "extract":
+        gm.extract(cli)
+
     elif command == "features":
         nicePrint(gm.features())
 
+    elif command == "summary_platform":
+        nicePrint(gm.summary_platform())
+
+    elif command == "summary_data":
+        nicePrint(gm.summary_data())
+
     elif command == "comment":
         cli = CLI(sys.argv)
-        command = cli.getOrDie("comment")
+        command = cli.getOrDefault("comment", "list")
         gm_item_id = cli.getOrDie("-gm_item_id")
 
         if command == "add":
             comment = cli.getOrDie("-m")
-            gm.add_comment(gm_item_id, comment)
             nicePrint(gm.add_comment(gm_item_id, comment))
-                    
-        elif command == "list" or comment == "get":
+        elif command == "list":
+            nicePrint(gm.list_comments(gm_item_id))
+        elif command == "delete":
+            comment_id = cli.getOrDie("-comment_id")
+            nicePrint(gm.delete_comment(gm_item_id, comment_id))
             nicePrint(gm.list_comments(gm_item_id))
         else:
-            print "invalid comment command."
+            print("invalid comment command - try 'add, list, delete'")
 
     elif command == "keyword":
         cli = CLI(sys.argv)
@@ -235,11 +251,10 @@ def main():
             last_harvested_to = cli.getOrDie("-last_harvested_to")
             results = gm.search_last_harvested(last_harvested_from, last_harvested_to)
         else:
-            results = nicePrint(gm.search())
-
+            results = gm.search()
 
         if cli.containsKey("-json"):
-            nicePrint(gm.search())
+            nicePrint(results)
         else:
             print("ItemID".ljust(35)+"Last Harvested".ljust(27) + "Name".ljust(20))
             for entry in results["results"]:
@@ -262,7 +277,7 @@ def main():
         performs an authenticated GET to the API
         """
         partial_url = sys.argv[2]
-        nicePrint(gm.get(partial_url))
+        nicePrint(gm.http_get(partial_url))
 
     else:
         print("I don't know how to '" + command + "'")

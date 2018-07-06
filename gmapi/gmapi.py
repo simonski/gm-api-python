@@ -1,6 +1,9 @@
+import os
 import sys
 import json
 import requests
+from cli import CLI
+from datetime import datetime
 
 class GraymetaClient():
 
@@ -9,17 +12,168 @@ class GraymetaClient():
         self.API_KEY = api_key
         self.HEADERS = { "Authorization": "Bearer " + self.API_KEY }
 
+    def summary_platform(self):
+        return self.http_get("/api/data/summary/platform")
+
+    def summary_data(self):
+        return self.http_get("/api/data/summary/data")
+
+    def extract_all(self, cli):
+        """
+        Extracts all item metadata to disk
+        """
+
+        # search file is a results of a previous search call so we don't
+        # have to call search again.  Use if present.
+        if cli.containsKey("-search_file"):
+            print("Not calling search, using file")
+            search_filename = cli.getOrDie("-search_file")
+            search_response = json.loads(open(search_filename, 'r').read())
+            print("Loaded search file ok.")
+        else:
+            print("Calling search")
+            search_response = self.search()
+            print("Called search, now extracting results")
+            
+        # cache file file is the set of items already downloaded *not* to download again
+        cache_filename = cli.getOrDie("-cache_file")
+        if os.path.isfile(cache_filename):
+            cache = json.loads(open(cache_filename, 'r').read())
+        else:
+            cache = []
+
+        # a little cache so I don't have to re-extract
+        output_dir = cli.getOrDie("-output_dir")
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
+        for r in search_response["results"]:
+            start_time = datetime.today()
+            result = r["result"]
+            stow_url = result["stow_url"]
+            filename = stow_url.split("/")[-1]
+            execution_id = stow_url.split("/")[-3] + "/" + stow_url.split("/")[-2]
+            gm_item_id = result["_id"]
+            if gm_item_id in cache:
+                print("Already processed " + gm_item_id + ", not extracting again.")
+                continue
+            
+            if not os.path.exists(output_dir + "/" + execution_id):
+                os.makedirs(output_dir + "/" + execution_id)
+
+            if "name" in result:
+                # then it has been harvested
+                gm_item = self.get_gm_item(gm_item_id)
+                gm_item_v2 = self.get_gm_item_v2(gm_item_id)
+
+                f1 = open(output_dir + "/" + execution_id + "/" + filename + "_v1.json", "w")
+                f1.write(json.dumps(gm_item, indent=4))
+                f1.close()
+
+                f2 = open(output_dir + "/" + execution_id + "/" + filename + "_v2.json", "w")
+                f2.write(json.dumps(gm_item_v2, indent=4))
+                f2.close()
+
+                f3 = open(output_dir + "/" + execution_id + "/" + filename + "_index.json", "w")
+                f3.write(json.dumps(result, indent=4))
+                f3.close()
+
+                cache.append(gm_item_id)
+
+                open(cache_filename, 'w').write(json.dumps(cache, indent=4))
+                ttl = (datetime.today() - start_time).seconds
+                print("Processed " + gm_item_id + " in " + str(ttl) + "s.")
+            else:
+                print(gm_item_id + " not harvested yet.")
+                        
+
+
+        
+        print("Called search ok, now fetching content.")
+        print("Extract Complete")
+
+    def extract(self, cli):
+        """
+        Extracts all items whose stow_url matches a search term
+        """
+
+        search_term = cli.getOrDie("-q")
+        print("Extracting all items with '" + search_term + "' in their stow_url.")
+
+        # search file is a results of a previous search call so we don't
+        # have to call search again.  Use if present.
+        if cli.containsKey("-search_file"):
+            print("Not calling search, using file")
+            search_filename = cli.getOrDie("-search_file")
+            search_response = json.loads(open(search_filename, 'r').read())
+            print("Loaded search file ok.")
+        else:
+            print("Calling search")
+            search_response = self.search()
+            print("Called search, now extracting results")
+            
+        # a little cache so I don't have to re-extract
+        output_dir = cli.getOrDie("-output_dir")
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
+        for r in search_response["results"]:
+            start_time = datetime.today()
+            result = r["result"]
+            stow_url = result["stow_url"]
+
+            should_download = stow_url.find(search_term) > -1
+
+            filename = stow_url.split("/")[-1]
+            execution_id = stow_url.split("/")[-3] + "/" + stow_url.split("/")[-2]
+            gm_item_id = result["_id"]
+
+            if not should_download:           
+                continue
+
+            if not os.path.exists(output_dir + "/" + execution_id):
+                os.makedirs(output_dir + "/" + execution_id)
+
+            if "name" in result:
+                # then it has been harvested
+                gm_item = self.get_gm_item(gm_item_id)
+                gm_item_v2 = self.get_gm_item_v2(gm_item_id)
+
+                f1 = open(output_dir + "/" + execution_id + "/" + filename + "_v1.json", "w")
+                f1.write(json.dumps(gm_item, indent=4))
+                f1.close()
+
+                f2 = open(output_dir + "/" + execution_id + "/" + filename + "_v2.json", "w")
+                f2.write(json.dumps(gm_item_v2, indent=4))
+                f2.close()
+
+                f3 = open(output_dir + "/" + execution_id + "/" + filename + "_index.json", "w")
+                f3.write(json.dumps(result, indent=4))
+                f3.close()
+
+                ttl = (datetime.today() - start_time).seconds
+                print("Processed " + gm_item_id + " in " + str(ttl) + "s.")
+            else:
+                print(gm_item_id + " not harvested yet.")
+                
+        print("Extract Complete")
+
+
     def features(self):
-        return self.get("/api/data/features")
+        return self.http_get("/api/data/features")
 
     def add_comment(self, gm_item_id, comment):
         url = "/api/data/comments"
         data = { "target_type": "item", "target_id": gm_item_id, "body": comment }
-        return self.post(url, data)
+        return self.http_post(url, data)
 
     def list_comments(self, gm_item_id):
         url = "/api/data/comments?target_type=item&page=0&target_id=" + gm_item_id
-        return self.get(url)
+        return self.http_get(url)
+
+    def delete_comment(self, gm_item_id, comment_id):
+        url = "/api/data/comments/" + comment_id
+        return self.delete(url)
 
     def harvest_item(self, location_id, gm_item_id):
         """
@@ -32,7 +186,7 @@ class GraymetaClient():
         """
         url = "/api/control/harvest"
         data = { "location_id": location_id, "item_id": gm_item_id, "force": True}
-        return self.post(url, data)
+        return self.http_post(url, data)
 
     def harvest_container(self, location_id, container_id):
         """
@@ -45,7 +199,7 @@ class GraymetaClient():
         """
         url = "/api/control/harvest"
         data = { "location_id": location_id, "container_id": container_id, "force": True }
-        return self.post(url, data)
+        return self.http_post(url, data)
 
     def get_gm_item_from_s3_key(self, s3_key):
         gm_item_id, location_id = self.get_gm_item_id_from_s3_key(s3_key)
@@ -99,13 +253,13 @@ class GraymetaClient():
             return None
 
     def get_gm_item(self, gm_item_id):
-        return self.get("/api/data/items/" + gm_item_id)
+        return self.http_get("/api/data/items/" + gm_item_id)
 
     def get_gm_item_v2(self, gm_item_id):
-        return self.get("/files/" + gm_item_id + "/metadata2.json")
+        return self.http_get("/files/" + gm_item_id + "/metadata2.json")
 
     def list_items(self, container_id):
-        return self.get("/api/data/items")
+        return self.http_get("/api/data/items")
 
     def delete_gm_item(self, gm_item_id):
         url = self.SERVER_URL + "/api/data/items/" + gm_item_id
@@ -121,59 +275,59 @@ class GraymetaClient():
         return r.json()
 
     def list_location(self, location_id):
-        return self.get("/api/data/locations/" + location_id)
+        return self.http_get("/api/data/locations/" + location_id)
 
     def list_locations(self):
-        return self.get("/api/data/locations")
+        return self.http_get("/api/data/locations")
 
     def list_containers(self, location_id):
-        return self.get("/api/data/locations/" + location_id + "/containers")
+        return self.http_get("/api/data/locations/" + location_id + "/containers")
 
     def list_enabled_containers(self):
         """
         GET /api/data/containers/enabled
         """
-        return self.get("/api/data/containers/enabled")
+        return self.http_get("/api/data/containers/enabled")
 
     def health(self):
-        return self.get("/api/data/healthz")
+        return self.http_get("/api/data/healthz")
 
     def stats(self):
-        return self.get("/api/control/system/stats")
+        return self.http_get("/api/control/system/stats")
 
     def activity(self):
-        return self.get("/api/data/activity")
+        return self.http_get("/api/data/activity")
 
     def user(self):
-        return self.get("/api/data/user")
+        return self.http_get("/api/data/user")
 
     def platform(self):
-        return self.get("/api/data/summary/platform")
+        return self.http_get("/api/data/summary/platform")
 
-    def search(self):
-        data = { "limit": 1000 }
-        return self.post("/api/data/search", data)
+    def search(self, limit=1000):
+        data = { "limit": limit }
+        return self.http_post("/api/data/search", data)
 
-    def search_last_modified(self, date_from, date_to):
-        data = { "limit": 1000, "last_modified": { "from": date_from, "to": date_to } }
-        return self.post("/api/data/search", data)
+    def search_last_modified(self, date_from, date_to, limit=1000):
+        data = { "limit": limit, "last_modified": { "from": date_from, "to": date_to } }
+        return self.http_post("/api/data/search", data)
 
-    def search_last_harvested(self, date_from, date_to):
-        data = { "limit": 1000, "last_harvested": { "from": date_from, "to": date_to } }
-        return self.post("/api/data/search", data)
+    def search_last_harvested(self, date_from, date_to, limit=1000):
+        data = { "limit": limit, "last_harvested": { "from": date_from, "to": date_to } }
+        return self.http_post("/api/data/search", data)
 
     def compilations(self):
-        return self.get("/api/data/summary/compilations")
+        return self.http_get("/api/data/summary/compilations")
 
     def keyword_list_groups(self):
-        return self.get("/api/data/keywords")
+        return self.http_get("/api/data/keywords")
 
     def keyword_get_group(self, group_id):
-        return self.get("/api/data/keyword-groups/" + group_id)
+        return self.http_get("/api/data/keyword-groups/" + group_id)
 
     def keyword_create_group(self, name, color):
         data = {"name": name, "color": color }
-        return self.post("/api/data/keyword-groups", data)
+        return self.http_post("/api/data/keyword-groups", data)
 
     def keyword_delete_group(self, group_id):
         url = self.SERVER_URL + "/api/data/keyword-groups/" + group_id
@@ -184,7 +338,7 @@ class GraymetaClient():
     def keyword_add_to_group(self, group_id, word):
         url = "/api/data/keywords/" + group_id
         data = {"word": word}
-        return self.post(url, data)
+        return self.http_post(url, data)
 
     def keyword_remove_from_group(self, group_id, word):
         url = self.SERVER_URL + "/api/data/keywords/" + group_id + "?word=" +word
@@ -192,20 +346,48 @@ class GraymetaClient():
         r = requests.delete(url, headers=headers)
         return r.json()
 
-    def get(self, partial_url):
+    def http_get(self, partial_url):
+        cli = CLI(sys.argv)
+        verbose = cli.containsKey("-v") 
         url = self.SERVER_URL + partial_url
         headers = self.HEADERS
-        print str(headers)
+        if verbose:
+            print(">>\nGET: " + url + "\nHEADERS: " + str(headers) + "\n>>")
         r = requests.get(url, headers=headers)
-        print r
-        print r.text
+        if verbose:
+            print(r)
+            print(r.text)
         return r.json()
 
-    def post(self, partial_url, data):
+    def http_post(self, partial_url, data):
+        cli = CLI(sys.argv)
+        verbose = cli.containsKey("-v")
         url = self.SERVER_URL + partial_url
         headers = self.HEADERS
         data_str = json.dumps(data)
+        if verbose:
+            print(">>\nPOST: " + url + "\nBODY: " + data_str + "\nHEADERS: " + str(headers) + "\n>>")
         r = requests.post(url, data=data_str, headers=headers)
-        print(r)
+        if verbose:
+            print(r)
         return r.json()
+
+    def http_delete(self, partial_url, data=None):
+        cli = CLI(sys.argv)
+        verbose = cli.containsKey("-v")
+        url = self.SERVER_URL + partial_url
+        headers = self.HEADERS
+        if data:
+            data_str = json.dumps(data)
+        else:
+            data_str = ""
+
+        if verbose:
+            print(">>\nDELETE: " + url + "\nBODY: " + data_str + "\nHEADERS: " + str(headers) + "\n>>")
+        r = requests.delete(url, data=data_str, headers=headers)
+        if verbose:
+            print(r)
+        return r.json()
+    
+
 
