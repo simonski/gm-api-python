@@ -173,7 +173,7 @@ class GraymetaClient():
 
     def delete_comment(self, gm_item_id, comment_id):
         url = "/api/data/comments/" + comment_id
-        return self.delete(url)
+        return self.http_delete(url)
 
     def harvest_item(self, location_id, gm_item_id):
         """
@@ -307,6 +307,17 @@ class GraymetaClient():
     def search(self, limit=1000):
         data = { "limit": limit }
         return self.http_post("/api/data/search", data)
+
+    def search_extracted(self, limit=1000):
+        filters = { "exists": [ { "field": "extracted", "value": True } ] }
+        data = { "limit": limit, "filters": filters }
+        return self.http_post("/api/data/search", data)
+
+    def search_not_extracted(self, limit=1000):
+        filters = { "not_exists": [ { "field": "extracted", "value": True } ] }
+        data = { "limit": limit, "filters": filters }
+        return self.http_post("/api/data/search", data)
+
 
     def search_last_modified(self, date_from, date_to, limit=1000):
         data = { "limit": limit, "last_modified": { "from": date_from, "to": date_to } }

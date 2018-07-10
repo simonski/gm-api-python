@@ -68,7 +68,8 @@ def usageAndDie():
     print("    health".ljust(ljust_value) + "- print current /api/data/healthz data.")
     print("    activity".ljust(ljust_value) + "- print current /api/data/activity data.")
     print("    version".ljust(ljust_value) + "- print current gmapi version number.")
-    print("    summary".ljust(ljust_value) + "- print summary information about the platform.")
+    print("    summary_platform".ljust(ljust_value) + "- print summary information about the platform.")
+    print("    summary_data".ljust(ljust_value) + "- print summary information about the data.")
     print("    get {URL}".ljust(ljust_value) + "- returns response from a GET.")
     print("")
 
@@ -238,6 +239,12 @@ def main():
 
     elif command == "compilations":
         nicePrint(gm.compilations())
+
+    elif command == "search_extracted":
+        results = gm.search_extracted()
+
+    elif command == "search_not_extracted":
+        results = gm.search_not_extracted()
 
     elif command == "search":
         
