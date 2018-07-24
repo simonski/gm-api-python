@@ -48,6 +48,7 @@ def usageAndDie():
     print("    get_gm_item {gm_item_id}".ljust(ljust_value) + "- gets metadata for an item using the gm_item_id")
     print("    get_gm_item_v2 {gm_item_id}".ljust(ljust_value) + "- gets metadata v2 for an item using the gm_item_id")
     print("")
+    print("    create_gm_item_id_from_s3_key {s3_key}".ljust(ljust_value) + "- create gm_item_id from an s3_key")
     print("    get_gm_item_id_from_s3_key {s3_key}".ljust(ljust_value) + "- gets gm_item_id from an s3_key")
     print("    get_gm_item_from_s3_key {s3_key}".ljust(ljust_value) + "- gets metadata for an item using the s3_key")
     print("")
@@ -63,7 +64,9 @@ def usageAndDie():
     print("")
     print("    keyword".ljust(ljust_value) + "- uses the Graymeta Keywords API")
     print("")
-    print("    extract".ljust(ljust_value) + "- extracts all metadata")
+    print("    extract_all".ljust(ljust_value) + "- extracts all metadata")
+    print("    extract (-q term)".ljust(ljust_value) + "- extracts all metadata where 'term' is present in the stow_url")
+    print("")
     print("    stats".ljust(ljust_value) + "- print current /api/control/system/stats data.")
     print("    health".ljust(ljust_value) + "- print current /api/data/healthz data.")
     print("    activity".ljust(ljust_value) + "- print current /api/data/activity data.")
@@ -112,6 +115,9 @@ def main():
 
     elif command == "extract":
         gm.extract(cli)
+
+    elif command == "scroll":
+        nicePrint(gm.scroll())
 
     elif command == "features":
         nicePrint(gm.features())
@@ -190,6 +196,10 @@ def main():
         gm_item_id = sys.argv[3]
         nicePrint(gm.harvest_item(location_id, gm_item_id))
 
+    elif command == "create_gm_item_id_from_s3_key":
+        s3_key = sys.argv[2]
+        nicePrint(gm.create_gm_item_id_from_s3_key(s3_key))
+
     elif command == "harvest_item_from_s3_key":
         s3_key = sys.argv[2]
         gm_item_id, location_id = gm.get_gm_item_id_from_s3_key(s3_key)
@@ -240,6 +250,10 @@ def main():
     elif command == "compilations":
         nicePrint(gm.compilations())
 
+    elif command == "search_quick":
+        results = gm.search_quick()
+        nicePrint(results)
+
     elif command == "search_extracted":
         results = gm.search_extracted()
 
@@ -263,7 +277,7 @@ def main():
         if cli.containsKey("-json"):
             nicePrint(results)
         else:
-            print("ItemID".ljust(35)+"Last Harvested".ljust(27) + "Name".ljust(20))
+            print("ItemID".ljust(35)+"Last Harvested".ljust(27) + "Last Modified".ljust(27) + "Name".ljust(20))
             for entry in results["results"]:
                 result = entry["result"]
                 gm_item_id = result["_id"]
@@ -275,9 +289,9 @@ def main():
                 if name is not None:
                     full_name = container + "/" + name
                 else:
-                    full_name = "<not harvested>"
+                    full_name = "<not harvested> ( " + result.get("stow_url") + " )"
 
-                print(gm_item_id.ljust(35) + last_harvested.ljust(27) + full_name.ljust(20))
+                print(gm_item_id.ljust(35) + last_harvested.ljust(27) + last_modified.ljust(27) + full_name.ljust(20))
 
     elif command == "get":
         """

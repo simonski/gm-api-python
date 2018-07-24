@@ -23,18 +23,6 @@ class GraymetaClient():
         Extracts all item metadata to disk
         """
 
-        # search file is a results of a previous search call so we don't
-        # have to call search again.  Use if present.
-        if cli.containsKey("-search_file"):
-            print("Not calling search, using file")
-            search_filename = cli.getOrDie("-search_file")
-            search_response = json.loads(open(search_filename, 'r').read())
-            print("Loaded search file ok.")
-        else:
-            print("Calling search")
-            search_response = self.search()
-            print("Called search, now extracting results")
-            
         # cache file file is the set of items already downloaded *not* to download again
         cache_filename = cli.getOrDie("-cache_file")
         if os.path.isfile(cache_filename):
@@ -47,6 +35,21 @@ class GraymetaClient():
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
+        # search file is a results of a previous search call so we don't
+        # have to call search again.  Use if present.
+        if cli.containsKey("-search_file"):
+            print("Not calling search, using file")
+            search_filename = cli.getOrDie("-search_file")
+            search_response = json.loads(open(search_filename, 'r').read())
+            print("Loaded search file ok.")
+        else:
+            print("Calling search")
+            search_response = self.search()
+            print("Called search, now extracting results")
+
+
+        total_results = len(search_response["results"])
+        print("Retrieved " + str(total_results) + " results.")
         for r in search_response["results"]:
             start_time = datetime.today()
             result = r["result"]
@@ -57,7 +60,7 @@ class GraymetaClient():
             if gm_item_id in cache:
                 print("Already processed " + gm_item_id + ", not extracting again.")
                 continue
-            
+
             if not os.path.exists(output_dir + "/" + execution_id):
                 os.makedirs(output_dir + "/" + execution_id)
 
@@ -85,10 +88,10 @@ class GraymetaClient():
                 print("Processed " + gm_item_id + " in " + str(ttl) + "s.")
             else:
                 print(gm_item_id + " not harvested yet.")
-                        
 
 
-        
+
+
         print("Called search ok, now fetching content.")
         print("Extract Complete")
 
@@ -111,7 +114,7 @@ class GraymetaClient():
             print("Calling search")
             search_response = self.search()
             print("Called search, now extracting results")
-            
+
         # a little cache so I don't have to re-extract
         output_dir = cli.getOrDie("-output_dir")
         if not os.path.exists(output_dir):
@@ -128,7 +131,7 @@ class GraymetaClient():
             execution_id = stow_url.split("/")[-3] + "/" + stow_url.split("/")[-2]
             gm_item_id = result["_id"]
 
-            if not should_download:           
+            if not should_download:
                 continue
 
             if not os.path.exists(output_dir + "/" + execution_id):
@@ -155,7 +158,7 @@ class GraymetaClient():
                 print("Processed " + gm_item_id + " in " + str(ttl) + "s.")
             else:
                 print(gm_item_id + " not harvested yet.")
-                
+
         print("Extract Complete")
 
 
@@ -175,7 +178,7 @@ class GraymetaClient():
         url = "/api/data/comments/" + comment_id
         return self.http_delete(url)
 
-    def harvest_item(self, location_id, gm_item_id):
+    def harvest_item(self, location_id, gm_item_id, force=False):
         """
         POST /api/control/harvest
         {
@@ -185,10 +188,10 @@ class GraymetaClient():
         }
         """
         url = "/api/control/harvest"
-        data = { "location_id": location_id, "item_id": gm_item_id, "force": True}
+        data = { "location_id": location_id, "item_id": gm_item_id, "force": force}
         return self.http_post(url, data)
 
-    def harvest_container(self, location_id, container_id):
+    def harvest_container(self, location_id, container_id, force=False):
         """
         POST /api/control/harvest
         {
@@ -198,8 +201,35 @@ class GraymetaClient():
         }
         """
         url = "/api/control/harvest"
-        data = { "location_id": location_id, "container_id": container_id, "force": True }
+        data = { "location_id": location_id, "container_id": container_id, "force": force}
         return self.http_post(url, data)
+
+    def create_gm_item_id_from_s3_key(self, s3_key):
+        """ 
+        The asset has not yet been walked, this assigns a gm_item_id to it without harvesting 
+        POST /api/control/item-id 
+        {"location_id":"xxxx", "container_id":"xxxxx", "item_id":"filename.txt"}
+        """
+
+        key = s3_key.replace("s3://", "")
+        splits = key.split("/")
+        bucket = splits[0]
+        filename = "/".join(splits[1:])
+
+        locations = self.list_locations()
+        location_id = locations["locations"][0]["id"]
+        containers = self.list_enabled_containers()
+
+        container = None
+        for candidate_container in containers:
+            if candidate_container["id"] == bucket:
+                container_id = candidate_container["id"]
+                break
+
+        url = "/api/control/item-id"
+        post_data = { "location_id": location_id, "container_id": container_id, "item_id": filename }
+        print(post_data)
+        return self.http_post(url, post_data)
 
     def get_gm_item_from_s3_key(self, s3_key):
         gm_item_id, location_id = self.get_gm_item_id_from_s3_key(s3_key)
@@ -304,16 +334,23 @@ class GraymetaClient():
     def platform(self):
         return self.http_get("/api/data/summary/platform")
 
-    def search(self, limit=1000):
+    def scroll(self):
+        return self.http_post("/api/data/scroll", {})
+
+    def search(self, limit=50000):
         data = { "limit": limit }
         return self.http_post("/api/data/search", data)
 
-    def search_extracted(self, limit=1000):
+    def search_quick(self, limit=50000):
+        data = { "limit": limit, "only": [ "gm_item_id" ] }
+        return self.http_post("/api/data/search", data)
+
+    def search_extracted(self, limit=50000):
         filters = { "exists": [ { "field": "extracted", "value": True } ] }
         data = { "limit": limit, "filters": filters }
         return self.http_post("/api/data/search", data)
 
-    def search_not_extracted(self, limit=1000):
+    def search_not_extracted(self, limit=50000):
         filters = { "not_exists": [ { "field": "extracted", "value": True } ] }
         data = { "limit": limit, "filters": filters }
         return self.http_post("/api/data/search", data)
@@ -359,7 +396,7 @@ class GraymetaClient():
 
     def http_get(self, partial_url):
         cli = CLI(sys.argv)
-        verbose = cli.containsKey("-v") 
+        verbose = cli.containsKey("-v")
         url = self.SERVER_URL + partial_url
         headers = self.HEADERS
         if verbose:
@@ -399,6 +436,6 @@ class GraymetaClient():
         if verbose:
             print(r)
         return r.json()
-    
+
 
 
