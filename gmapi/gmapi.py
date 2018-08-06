@@ -311,8 +311,7 @@ class GraymetaClient():
         url = self.SERVER_URL + "/api/data/items/" + gm_item_id + "/captions"
         headers = self.HEADERS
         files = { "caption_file": open(stl_filename, 'rb') }
-        cfg = { "verbose": sys.stderr }
-        r = requests.post(url, files=files, headers=headers, config=cfg)
+        r = requests.post(url, files=files, headers=headers)
         return r.json()
 
     def get_captions(self, gm_item_id):
