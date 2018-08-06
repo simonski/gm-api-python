@@ -54,7 +54,10 @@ def usageAndDie():
     print("")
     print("    delete_gm_item {gm_item_id}".ljust(ljust_value) + "- deletes the metadata from graymeta")
     print("")
-    print("    upload_stl {gm_item_id} {stl_filename} ".ljust(ljust_value) + "- uploads and associates an STL file with content")
+    print("    get_captions {gm_item_id}".ljust(ljust_value) + "- returns the captions in json")
+    print("    upload_captions {gm_item_id} {stl_filename} ".ljust(ljust_value) + "- uploads and associates an STL file with content")
+    print("    delete_captions {gm_item_id} {captions_id}".ljust(ljust_value) + "- deletes the captions from the item")
+    print("    upload_captions_content {gm_item_id} {stl_filename} ".ljust(ljust_value) + "- uploads and associates an STL file with content")
     print("")
     print("    harvest_item_from_s3_key {s3_key} {extractors}".ljust(ljust_value) + "- forces a harvest for an item via its S3 key")
     print("    harvest_container {location_id} {container_id}".ljust(ljust_value) + "- forces a harvest for an entire container.")
@@ -106,10 +109,22 @@ def main():
     if cli.containsKey("-nossl"):
         gm.SSL_VERIFY = False
 
-    if command == "upload_stl":
+    if cli.containsKey("-v") or cli.containsKey("--verbose"):
+        gm.verbose = True
+
+    if command == "upload_captions":
         gm_item_id = sys.argv[2]
         stl_filename = sys.argv[3]
-        nicePrint(gm.upload_stl(gm_item_id, stl_filename))
+        nicePrint(gm.upload_captions(gm_item_id, stl_filename))
+
+    elif command == "get_captions":
+        gm_item_id = sys.argv[2]
+        nicePrint(gm.get_captions(gm_item_id))
+
+    elif command == "delete_captions":
+        gm_item_id = sys.argv[2]
+        captions_id = sys.argv[3]
+        nicePrint(gm.delete_captions(gm_item_id, captions_id))
 
     elif command == "disable_live_harvesting":
         gm.disable_live_harvesting()

@@ -307,13 +307,24 @@ class GraymetaClient():
         r = requests.delete(url, headers=headers)
         return r.json()
 
-    def upload_stl(self, gm_item_id, stl_filename):
+    def upload_captions(self, gm_item_id, stl_filename):
         url = self.SERVER_URL + "/api/data/items/" + gm_item_id + "/captions"
         headers = self.HEADERS
         files = { "caption_file": open(stl_filename, 'rb') }
-        r = requests.post(url, files=files, headers=headers)
+        cfg = { "verbose": sys.stderr }
+        r = requests.post(url, files=files, headers=headers, config=cfg)
         return r.json()
 
+    def get_captions(self, gm_item_id):
+        url = "/api/data/items/" + gm_item_id + "?only=captions.captions"
+        return self.http_get(url)
+
+    def delete_captions(self, gm_item_id, captions_id):
+        url = self.SERVER_URL + "/api/data/items/" + gm_item_id + "/captions?caption_id=" + captions_id
+        headers = self.HEADERS
+        r = requests.delete(url, headers=headers)
+        return r.json()
+  
     def list_location(self, location_id):
         return self.http_get("/api/data/locations/" + location_id)
 
