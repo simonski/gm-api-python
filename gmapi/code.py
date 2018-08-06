@@ -56,8 +56,7 @@ def usageAndDie():
     print("")
     print("    upload_stl {gm_item_id} {stl_filename} ".ljust(ljust_value) + "- uploads and associates an STL file with content")
     print("")
-    print("    harvest_item_from_s3_key".ljust(ljust_value) + "- forces a harvest for an item via its S3 key")
-    print("    harvest_item {location_id} {gm_item_id}".ljust(ljust_value) + "- forces a harvest for a specific item")
+    print("    harvest_item_from_s3_key {s3_key} {extractors}".ljust(ljust_value) + "- forces a harvest for an item via its S3 key")
     print("    harvest_container {location_id} {container_id}".ljust(ljust_value) + "- forces a harvest for an entire container.")
     print("")
     print("    comment".ljust(ljust_value) + "- uses the Graymeta Comments API")
@@ -104,11 +103,16 @@ def main():
         sys.exit(1)
 
     gm = GraymetaClient(server_url, server_key)
+    if cli.containsKey("-nossl"):
+        gm.SSL_VERIFY = False
 
     if command == "upload_stl":
         gm_item_id = sys.argv[2]
         stl_filename = sys.argv[3]
         nicePrint(gm.upload_stl(gm_item_id, stl_filename))
+
+    elif command == "disable_live_harvesting":
+        gm.disable_live_harvesting()
 
     elif command == "extract_all":
         gm.extract_all(cli)
@@ -191,19 +195,24 @@ def main():
         container_id = sys.argv[3]
         nicePrint(gm.harvest_container(location_id, container_id))
 
-    elif command == "harvest_item":
-        location_id = sys.argv[2]
-        gm_item_id = sys.argv[3]
-        nicePrint(gm.harvest_item(location_id, gm_item_id))
+    elif command == "harvest_item_from_s3_key":
+        s3_key = sys.argv[2]
+        extractors = sys.argv[3].split(",")
+        response = gm.create_gm_item_id_from_s3_key(s3_key)
+        nicePrint(response)
+        #gm_item_id, location_id = gm.get_gm_item_id_from_s3_key(s3_key)
+        #nicePrint(gm.harvest_item(location_id, gm_item_id))
+
+        """
+        elif command == "harvest_item":
+            location_id = sys.argv[2]
+            gm_item_id = sys.argv[3]
+            nicePrint(gm.harvest_item(location_id, gm_item_id))
+        """
 
     elif command == "create_gm_item_id_from_s3_key":
         s3_key = sys.argv[2]
         nicePrint(gm.create_gm_item_id_from_s3_key(s3_key))
-
-    elif command == "harvest_item_from_s3_key":
-        s3_key = sys.argv[2]
-        gm_item_id, location_id = gm.get_gm_item_id_from_s3_key(s3_key)
-        nicePrint(gm.harvest_item(location_id, gm_item_id))
 
     elif command == "get_gm_item_id_from_s3_key":
         s3_key = sys.argv[2]
@@ -277,21 +286,25 @@ def main():
         if cli.containsKey("-json"):
             nicePrint(results)
         else:
-            print("ItemID".ljust(35)+"Last Harvested".ljust(27) + "Last Modified".ljust(27) + "Name".ljust(20))
-            for entry in results["results"]:
-                result = entry["result"]
-                gm_item_id = result["_id"]
-                container = result.get("stow_container_id") or "stow_container_id"
-                name = result.get("name") or None
-                last_modified = result.get("last_modified") or "no last modified."
-                last_harvested = result.get("last_harvested") or "no last harvested."
-
-                if name is not None:
-                    full_name = container + "/" + name
-                else:
-                    full_name = "<not harvested> ( " + result.get("stow_url") + " )"
-
-                print(gm_item_id.ljust(35) + last_harvested.ljust(27) + last_modified.ljust(27) + full_name.ljust(20))
+            if not "results" in results:
+                print("No results found.")
+                print(results)
+            else:
+                print("ItemID".ljust(35)+"Last Harvested".ljust(27) + "Last Modified".ljust(27) + "Name".ljust(20))
+                for entry in results["results"]:
+                    result = entry["result"]
+                    gm_item_id = result["_id"]
+                    container = result.get("stow_container_id") or "stow_container_id"
+                    name = result.get("name") or None
+                    last_modified = result.get("last_modified") or "no last modified."
+                    last_harvested = result.get("last_harvested") or "no last harvested."
+    
+                    if name is not None:
+                        full_name = container + "/" + name
+                    else:
+                        full_name = "<not harvested> ( " + result.get("stow_url") + " )"
+    
+                    print(gm_item_id.ljust(35) + last_harvested.ljust(27) + last_modified.ljust(27) + full_name.ljust(20))
 
     elif command == "get":
         """

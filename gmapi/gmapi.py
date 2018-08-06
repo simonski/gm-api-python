@@ -2,7 +2,7 @@ import os
 import sys
 import json
 import requests
-from cli import CLI
+from .cli import CLI
 from datetime import datetime
 
 class GraymetaClient():
@@ -11,6 +11,7 @@ class GraymetaClient():
         self.SERVER_URL = server_url
         self.API_KEY = api_key
         self.HEADERS = { "Authorization": "Bearer " + self.API_KEY }
+        self.verbose = False
 
     def summary_platform(self):
         return self.http_get("/api/data/summary/platform")
@@ -178,7 +179,7 @@ class GraymetaClient():
         url = "/api/data/comments/" + comment_id
         return self.http_delete(url)
 
-    def harvest_item(self, location_id, gm_item_id, force=False):
+    def harvest_item(self, location_id, container_id, stow_url, gm_item_id, force, extractors):
         """
         POST /api/control/harvest
         {
@@ -188,7 +189,10 @@ class GraymetaClient():
         }
         """
         url = "/api/control/harvest"
-        data = { "location_id": location_id, "item_id": gm_item_id, "force": force}
+        # data = { "location_id": location_id, "container_id": container_id, "stow_url": stow_url, "gm_item_id": gm_item_id, "force": force, "override_extractors": False}
+        # data = { "location_id": location_id, "item_id": gm_item_id, "force": force, "override_extractors": False, }
+        data = { "location_id": location_id, "container_id": container_id, "item_stow_url": stow_url, "force": force, "extractors": extractors }
+        print("harvest_item: url=" + url + ", data=" + str(data))
         return self.http_post(url, data)
 
     def harvest_container(self, location_id, container_id, force=False):
@@ -205,12 +209,18 @@ class GraymetaClient():
         return self.http_post(url, data)
 
     def create_gm_item_id_from_s3_key(self, s3_key):
-        """ 
-        The asset has not yet been walked, this assigns a gm_item_id to it without harvesting 
-        POST /api/control/item-id 
+        """
+        The asset has not yet been walked, this assigns a gm_item_id to it without harvesting
+        POST /api/control/item-id
         {"location_id":"xxxx", "container_id":"xxxxx", "item_id":"filename.txt"}
+
+        returns
+
+        {'gm_item_id': 'xxxx', 'stow_url': 's3://https://xxxxx/content.mp4'}
+
         """
 
+        print("gmapi.create_gm_item_id_from_s3_key(" + s3_key + ")")
         key = s3_key.replace("s3://", "")
         splits = key.split("/")
         bucket = splits[0]
@@ -218,10 +228,10 @@ class GraymetaClient():
 
         locations = self.list_locations()
         location_id = locations["locations"][0]["id"]
-        containers = self.list_enabled_containers()
+        containers = self.list_containers(location_id)
 
         container = None
-        for candidate_container in containers:
+        for candidate_container in containers["containers"]:
             if candidate_container["id"] == bucket:
                 container_id = candidate_container["id"]
                 break
@@ -323,6 +333,29 @@ class GraymetaClient():
         return self.http_get("/api/data/healthz")
 
     def stats(self):
+        """
+{
+    "queue_depths": {
+        "index": 0,
+        "stage09": 0,
+        "stage08": 0,
+        "stage05": 0,
+        "stage04": 0,
+        "stage07": 0,
+        "stage06": 0,
+        "stage01": 0,
+        "stage00": 0,
+        "stage03": 0,
+        "stage02": 0,
+        "activity": 0,
+        "walk": 0
+    },
+    "jobs": {
+        "running": 0,
+        "pending": 0
+    }
+}
+        """
         return self.http_get("/api/control/system/stats")
 
     def activity(self):
@@ -354,7 +387,6 @@ class GraymetaClient():
         filters = { "not_exists": [ { "field": "extracted", "value": True } ] }
         data = { "limit": limit, "filters": filters }
         return self.http_post("/api/data/search", data)
-
 
     def search_last_modified(self, date_from, date_to, limit=1000):
         data = { "limit": limit, "last_modified": { "from": date_from, "to": date_to } }
@@ -396,20 +428,23 @@ class GraymetaClient():
 
     def http_get(self, partial_url):
         cli = CLI(sys.argv)
-        verbose = cli.containsKey("-v")
+        verbose = self.verbose or cli.containsKey("-v")
         url = self.SERVER_URL + partial_url
         headers = self.HEADERS
         if verbose:
             print(">>\nGET: " + url + "\nHEADERS: " + str(headers) + "\n>>")
         r = requests.get(url, headers=headers)
-        if verbose:
-            print(r)
-            print(r.text)
-        return r.json()
+        if r.status_code >= 200 and r.status_code < 300:
+            if verbose:
+                print(r)
+                print(r.text)
+            return r.json()
+        else:
+            return None
 
     def http_post(self, partial_url, data):
         cli = CLI(sys.argv)
-        verbose = cli.containsKey("-v")
+        verbose = self.verbose or cli.containsKey("-v")
         url = self.SERVER_URL + partial_url
         headers = self.HEADERS
         data_str = json.dumps(data)
@@ -422,7 +457,7 @@ class GraymetaClient():
 
     def http_delete(self, partial_url, data=None):
         cli = CLI(sys.argv)
-        verbose = cli.containsKey("-v")
+        verbose = self.verbose or cli.containsKey("-v")
         url = self.SERVER_URL + partial_url
         headers = self.HEADERS
         if data:
