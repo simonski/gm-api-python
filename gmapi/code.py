@@ -109,7 +109,7 @@ def main():
     if cli.containsKey("-nossl"):
         gm.SSL_VERIFY = False
 
-    if cli.containsKey("-v") or cli.containsKey("--verbose"):
+    if cli.containsKey("-v") or cli.containsKey("--verbose") or cli.containsKey("-verbose"):
         gm.verbose = True
 
     if command == "upload_captions":

@@ -285,7 +285,7 @@ class GraymetaClient():
         data = { "location_id": location_id, "container_id": container_id, "item_id": item_id }
         data_str = json.dumps(data)
         headers = self.HEADERS
-
+        self._setupDebug()
         r = requests.post(url, data=data_str, headers=headers)
         if r.status_code >= 200 and r.status_code <= 299:
             return r.json()
@@ -304,6 +304,7 @@ class GraymetaClient():
     def delete_gm_item(self, gm_item_id):
         url = self.SERVER_URL + "/api/data/items/" + gm_item_id
         headers = self.HEADERS
+        self._setupDebug()
         r = requests.delete(url, headers=headers)
         return r.json()
 
@@ -311,6 +312,7 @@ class GraymetaClient():
         url = self.SERVER_URL + "/api/data/items/" + gm_item_id + "/captions"
         headers = self.HEADERS
         files = { "caption_file": open(stl_filename, 'rb') }
+        self._setupDebug()
         r = requests.post(url, files=files, headers=headers)
         return r.json()
 
@@ -321,6 +323,7 @@ class GraymetaClient():
     def delete_captions(self, gm_item_id, captions_id):
         url = self.SERVER_URL + "/api/data/items/" + gm_item_id + "/captions?caption_id=" + captions_id
         headers = self.HEADERS
+        self._setupDebug()
         r = requests.delete(url, headers=headers)
         return r.json()
   
@@ -422,6 +425,7 @@ class GraymetaClient():
     def keyword_delete_group(self, group_id):
         url = self.SERVER_URL + "/api/data/keyword-groups/" + group_id
         headers = self.HEADERS
+        self._setupDebug()
         r = requests.delete(url, headers=headers)
         return r.json()
 
@@ -433,41 +437,29 @@ class GraymetaClient():
     def keyword_remove_from_group(self, group_id, word):
         url = self.SERVER_URL + "/api/data/keywords/" + group_id + "?word=" +word
         headers = self.HEADERS
+        self._setupDebug()
         r = requests.delete(url, headers=headers)
         return r.json()
 
     def http_get(self, partial_url):
-        cli = CLI(sys.argv)
-        verbose = self.verbose or cli.containsKey("-v")
         url = self.SERVER_URL + partial_url
         headers = self.HEADERS
-        if verbose:
-            print(">>\nGET: " + url + "\nHEADERS: " + str(headers) + "\n>>")
+        self._setupDebug()            
         r = requests.get(url, headers=headers)
         if r.status_code >= 200 and r.status_code < 300:
-            if verbose:
-                print(r)
-                print(r.text)
             return r.json()
         else:
             return None
 
     def http_post(self, partial_url, data):
-        cli = CLI(sys.argv)
-        verbose = self.verbose or cli.containsKey("-v")
         url = self.SERVER_URL + partial_url
         headers = self.HEADERS
         data_str = json.dumps(data)
-        if verbose:
-            print(">>\nPOST: " + url + "\nBODY: " + data_str + "\nHEADERS: " + str(headers) + "\n>>")
+        self._setupDebug()            
         r = requests.post(url, data=data_str, headers=headers)
-        if verbose:
-            print(r)
         return r.json()
 
     def http_delete(self, partial_url, data=None):
-        cli = CLI(sys.argv)
-        verbose = self.verbose or cli.containsKey("-v")
         url = self.SERVER_URL + partial_url
         headers = self.HEADERS
         if data:
@@ -475,12 +467,29 @@ class GraymetaClient():
         else:
             data_str = ""
 
-        if verbose:
-            print(">>\nDELETE: " + url + "\nBODY: " + data_str + "\nHEADERS: " + str(headers) + "\n>>")
+        self._setupDebug()            
         r = requests.delete(url, data=data_str, headers=headers)
-        if verbose:
-            print(r)
         return r.json()
 
+    def _setupDebug(self):
+        cli = CLI(sys.argv)
+        if cli.containsKey("-v") or cli.containsKey("-verbose"):
+            pass
+        else:
+            return
+
+        import logging
+        try:
+            import http.client as http_client
+        except ImportError:
+            # Python 2
+            import httplib as http_client
+        http_client.HTTPConnection.debuglevel = 1
+        logging.basicConfig()
+        logging.getLogger().setLevel(logging.DEBUG)
+        requests_log = logging.getLogger("requests.packages.urllib3")
+        requests_log.setLevel(logging.DEBUG)
+        requests_log.propagate = True
+        
 
 
