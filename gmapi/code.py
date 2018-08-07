@@ -5,7 +5,7 @@ import json
 # py2/3 imports fix
 from .gmapi import GraymetaClient
 from .cli import CLI
-import constants
+from .constants import *
 
 COMMAND="gm"
 
@@ -81,7 +81,7 @@ def usageAndDie():
     sys.exit(0)
 
 def version():
-    print(COMMAND + " client " + constants.VERSION)
+    print(COMMAND + " client " + VERSION)
 
 def main():
 
@@ -285,7 +285,7 @@ def main():
         results = gm.search_not_extracted()
 
     elif command == "search":
-        
+
         results = None
         if cli.containsKey("-last_modified_from") or cli.containsKey("-last_modified_to"):
             last_modified_from = cli.getOrDie("-last_modified_from")
@@ -313,12 +313,12 @@ def main():
                     name = result.get("name") or None
                     last_modified = result.get("last_modified") or "no last modified."
                     last_harvested = result.get("last_harvested") or "no last harvested."
-    
+
                     if name is not None:
                         full_name = container + "/" + name
                     else:
                         full_name = "<not harvested> ( " + result.get("stow_url") + " )"
-    
+
                     print(gm_item_id.ljust(35) + last_harvested.ljust(27) + last_modified.ljust(27) + full_name.ljust(20))
 
     elif command == "get":
