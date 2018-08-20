@@ -179,7 +179,7 @@ class GraymetaClient():
         url = "/api/data/comments/" + comment_id
         return self.http_delete(url)
 
-    def harvest_item(self, location_id, container_id, stow_url, gm_item_id, force, extractors):
+    def harvest_item(self, location_id, container_id, stow_url, gm_item_id, force, extractors, override_extractors, new_extractors):
         """
         POST /api/control/harvest
         {
@@ -191,7 +191,7 @@ class GraymetaClient():
         url = "/api/control/harvest"
         # data = { "location_id": location_id, "container_id": container_id, "stow_url": stow_url, "gm_item_id": gm_item_id, "force": force, "override_extractors": False}
         # data = { "location_id": location_id, "item_id": gm_item_id, "force": force, "override_extractors": False, }
-        data = { "location_id": location_id, "container_id": container_id, "item_stow_url": stow_url, "force": force, "extractors": extractors }
+        data = { "location_id": location_id, "container_id": container_id, "item_stow_url": stow_url, "force": force, "extractors": extractors, "override_extractors": override_extractors, "new_extractors": new_extractors }
         print("harvest_item: url=" + url + ", data=" + str(data))
         return self.http_post(url, data)
 
