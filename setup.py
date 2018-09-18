@@ -18,10 +18,11 @@ here = path.abspath(path.dirname(__file__))
 with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
+from gmapi import constants
 setup(
     name='gmapi',
     test_suite='tests',
-    version='1.9.21',
+    version=constants.VERSION,
     description='Python bindings to Graymeta.com Platform API v.21+',
     long_description=long_description,
     url='https://github.com/simonski/gm-api-python',
