@@ -255,7 +255,7 @@ class GraymetaClient():
         key = s3_key.replace("s3://", "")
         splits = key.split("/")
         bucket = splits[0]
-        filename = splits[-1]
+        filename = "/".join(splits[1:])
 
         locations = self.list_locations()
         location_id = locations["locations"][0]["id"]
@@ -276,7 +276,6 @@ class GraymetaClient():
                 gm_item_id = item_data["gm_item_id"]
                 return gm_item_id, location_id
             else:
-                print("No gm_item_id found.")
                 return None, None
 
 
@@ -344,6 +343,15 @@ class GraymetaClient():
 
     def health(self):
         return self.http_get("/api/data/healthz")
+
+    def isIdle(self):
+        """ 
+        indicates if GM has any work to do or is working on anything
+        """
+        stats = self.stats()
+        running_jobs = stats.get("jobs").get("running") or 0
+        pending_jobs = stats.get("jobs").get("pending") or 0
+        return (running_jobs + pending_jobs) == 0
 
     def stats(self):
         """

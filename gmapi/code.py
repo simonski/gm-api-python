@@ -285,6 +285,10 @@ def main():
     elif command == "search_not_extracted":
         results = gm.search_not_extracted()
 
+    elif command == "idle":
+        results = gm.isIdle()
+        print(results)
+
     elif command == "search":
 
         results = None
